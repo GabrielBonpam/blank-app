@@ -24,7 +24,7 @@ if "messages" not in st.session_state:
         {"role": "system", "content": "You are a helpful assistant."}
     ]
 
-# Display existing chat messages
+# Render chat history
 for msg in st.session_state.messages:
     if msg["role"] == "user":
         st.chat_message("user").write(msg["content"])
@@ -34,9 +34,9 @@ for msg in st.session_state.messages:
 # Chat input
 user_input = st.chat_input("Type your message here...")
 if user_input:
-    # Add user message to history
+    # Append user message and display
     st.session_state.messages.append({"role": "user", "content": user_input})
-    # Call OpenAI API and append assistant response
+    # Call OpenAI Chat API
     with st.spinner("Thinking..."):
         try:
             response = openai.ChatCompletion.create(
@@ -47,6 +47,5 @@ if user_input:
             st.session_state.messages.append({"role": "assistant", "content": assistant_msg})
         except Exception as e:
             st.error(f"Error: {e}")
-    # Rerun to render all messages without duplication
-    st.experimental_rerun()
-
+    
+    # The app automatically reruns after user input; new messages will render above on rerun
