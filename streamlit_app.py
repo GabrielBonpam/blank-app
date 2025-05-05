@@ -11,10 +11,10 @@ st.set_page_config(
 # Title
 st.title("🤖 AI-powered Chatbot")
 
-# Set OpenAI API key from environment or secrets
+# Load API key from environment or secrets
 api_key = os.getenv("OPENAI_API_KEY") or st.secrets.get("openai_api_key")
 if not api_key:
-    st.error("OpenAI API key not found. Please set it in the environment variable OPENAI_API_KEY or in Streamlit secrets.")
+    st.error("OpenAI API key not found. Please set OPENAI_API_KEY or add it to Streamlit secrets.")
     st.stop()
 openai.api_key = api_key
 
@@ -24,15 +24,19 @@ if "messages" not in st.session_state:
         {"role": "system", "content": "You are a helpful assistant."}
     ]
 
+# Display existing chat messages
+for msg in st.session_state.messages:
+    if msg["role"] == "user":
+        st.chat_message("user").write(msg["content"])
+    elif msg["role"] == "assistant":
+        st.chat_message("assistant").write(msg["content"])
+
 # Chat input
 user_input = st.chat_input("Type your message here...")
 if user_input:
-    # Append user message
+    # Add user message to history
     st.session_state.messages.append({"role": "user", "content": user_input})
-    # Display user message
-    st.chat_message("user").write(user_input)
-
-    # Call OpenAI Chat API
+    # Call OpenAI API and append assistant response
     with st.spinner("Thinking..."):
         try:
             response = openai.ChatCompletion.create(
@@ -41,14 +45,7 @@ if user_input:
             )
             assistant_msg = response.choices[0].message.content
             st.session_state.messages.append({"role": "assistant", "content": assistant_msg})
-            # Display assistant message
-            st.chat_message("assistant").write(assistant_msg)
         except Exception as e:
             st.error(f"Error: {e}")
-
-# Display previous messages on page load
-for msg in st.session_state.messages[1:]:  # skip system
-    if msg["role"] == "user":
-        st.chat_message("user").write(msg["content"])
-    elif msg["role"] == "assistant":
-        st.chat_message("assistant").write(msg["content"])
+    # Rerun to render all messages without duplication
+    st.experimental_rerun()
