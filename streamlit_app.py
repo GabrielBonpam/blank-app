@@ -49,3 +49,4 @@ if user_input:
             st.error(f"Error: {e}")
     # Rerun to render all messages without duplication
     st.experimental_rerun()
+
