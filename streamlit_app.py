@@ -1,83 +1,54 @@
+import os
 import streamlit as st
-import pandas as pd
-import numpy as np
+import openai
 
 # Page configuration
 st.set_page_config(
-    page_title="🎈 My new app",
-    layout="wide",
-    initial_sidebar_state="expanded"
+    page_title="🤖 AI Chatbot",
+    layout="centered"
 )
 
-# Title and description
-st.title("🎈 My new app")
-st.write("Let's start building! For help and inspiration, head over to [docs.streamlit.io](https://docs.streamlit.io/).")
+# Title
+st.title("🤖 AI-powered Chatbot")
 
-# Sidebar controls
-st.sidebar.header("Customize")
-chart_type = st.sidebar.selectbox("Chart type", ["Line", "Bar", "Area"])
-num_points = st.sidebar.slider(
-    "Number of points", min_value=10, max_value=200, value=50, step=10
-)
+# Set OpenAI API key from environment or secrets
+api_key = os.getenv("OPENAI_API_KEY") or st.secrets.get("openai_api_key")
+if not api_key:
+    st.error("OpenAI API key not found. Please set it in the environment variable OPENAI_API_KEY or in Streamlit secrets.")
+    st.stop()
+openai.api_key = api_key
 
-# Generate sample data
-data = pd.DataFrame(
-    np.random.randn(num_points, 3),
-    columns=["A", "B", "C"]
-)
+# Initialize chat history
+if "messages" not in st.session_state:
+    st.session_state.messages = [
+        {"role": "system", "content": "You are a helpful assistant."}
+    ]
 
-# Display chart
-st.header("🔍 Random Data Visualization")
-if chart_type == "Line":
-    st.line_chart(data)
-elif chart_type == "Bar":
-    st.bar_chart(data)
-else:
-    st.area_chart(data)
+# Chat input
+user_input = st.chat_input("Type your message here...")
+if user_input:
+    # Append user message
+    st.session_state.messages.append({"role": "user", "content": user_input})
+    # Display user message
+    st.chat_message("user").write(user_input)
 
-# Show raw data in an expander
-with st.expander("Show raw data"):
-    st.dataframe(data)
+    # Call OpenAI Chat API
+    with st.spinner("Thinking..."):
+        try:
+            response = openai.ChatCompletion.create(
+                model="gpt-3.5-turbo",
+                messages=st.session_state.messages
+            )
+            assistant_msg = response.choices[0].message.content
+            st.session_state.messages.append({"role": "assistant", "content": assistant_msg})
+            # Display assistant message
+            st.chat_message("assistant").write(assistant_msg)
+        except Exception as e:
+            st.error(f"Error: {e}")
 
-# File uploader
-st.header("📂 Upload Your CSV")
-uploader = st.file_uploader("Upload a CSV file for preview", type=["csv"])
-if uploader is not None:
-    df = pd.read_csv(uploader)
-    st.subheader("Preview of uploaded CSV")
-    st.dataframe(df)
-
-# Map example
-st.header("🗺️ Sample Map")
-map_data = pd.DataFrame(
-    np.random.randn(100, 2) / [50, 50] + [37.76, -122.4],
-    columns=["lat", "lon"]
-)
-st.map(map_data)
-
-# Metrics
-st.header("📈 Key Metrics")
-col1, col2, col3 = st.columns(3)
-col1.metric("Temperature", "70 °F", "+1.2 °F")
-col2.metric("Wind Speed", "9 mph", "-8%")
-col3.metric("Humidity", "70%", "+4%")
-
-# Progress bar example
-st.header("⏳ Progress Demo")
-if st.button("Run Progress"):
-    progress_bar = st.progress(0)
-    for i in range(100):
-        progress_bar.progress(i + 1)
-        st.time.sleep(0.01)
-
-# AI chat placeholder
-st.sidebar.header("🤖 AI Chat")
-user_prompt = st.sidebar.text_input("Ask the app a question:")
-if user_prompt:
-    st.sidebar.write(f"You asked: {user_prompt}")
-    # Placeholder for model integration
-    st.sidebar.write("**AI response**: (model output would appear here)")
-
-# Footer
-st.write("---")
-st.write("Built with ❤️ using Streamlit")
+# Display previous messages on page load
+for msg in st.session_state.messages[1:]:  # skip system
+    if msg["role"] == "user":
+        st.chat_message("user").write(msg["content"])
+    elif msg["role"] == "assistant":
+        st.chat_message("assistant").write(msg["content"])
