@@ -24,19 +24,15 @@ if "messages" not in st.session_state:
         {"role": "system", "content": "You are a helpful assistant."}
     ]
 
-# Render chat history
-for msg in st.session_state.messages:
-    if msg["role"] == "user":
-        st.chat_message("user").write(msg["content"])
-    elif msg["role"] == "assistant":
-        st.chat_message("assistant").write(msg["content"])
+# Function to handle user input
 
-# Chat input
-user_input = st.chat_input("Type your message here...")
-if user_input:
-    # Append user message and display
-    st.session_state.messages.append({"role": "user", "content": user_input})
-    # Call OpenAI Chat API
+def handle_user_input():
+    user_msg = st.session_state.user_input
+    if not user_msg:
+        return
+    # Append user message
+    st.session_state.messages.append({"role": "user", "content": user_msg})
+    # Generate assistant reply
     with st.spinner("Thinking..."):
         try:
             response = openai.ChatCompletion.create(
@@ -44,8 +40,16 @@ if user_input:
                 messages=st.session_state.messages
             )
             assistant_msg = response.choices[0].message.content
-            st.session_state.messages.append({"role": "assistant", "content": assistant_msg})
         except Exception as e:
-            st.error(f"Error: {e}")
-    
-    # The app automatically reruns after user input; new messages will render above on rerun
+            assistant_msg = f"Error: {e}"
+    # Append assistant message
+    st.session_state.messages.append({"role": "assistant", "content": assistant_msg})
+    # Clear input
+    st.session_state.user_input = ""
+
+# Display chat messages
+for msg in st.session_state.messages:
+    st.chat_message(msg["role"]).write(msg["content"])
+
+# Chat input with callback
+st.chat_input("Type your message here...", key="user_input", on_submit=handle_user_input)
